@@ -33,12 +33,12 @@ func main() {
 	generator := graph.NewGenerator(driver)
 
 	nodeCount := 5
-	edgeCount := 5
+	edgeCount := 2
 
-	createdNodes, err := generator.CreateGraph(ctx, nodeCount, edgeCount)
+	result, err := generator.CreateGraph(ctx, nodeCount, edgeCount)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Created graph with %d nodes and %d edges\n", createdNodes, edgeCount)
+	fmt.Printf("Created graph with %d nodes and %d edges\n", result.NodesCreated, result.EdgesCreated)
 }

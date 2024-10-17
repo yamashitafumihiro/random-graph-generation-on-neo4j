@@ -11,7 +11,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	dbUri := "neo4j://localhost:7687"
+	dbUri := "neo4j://localhost"
 
 	driver, err := neo4j.NewDriverWithContext(dbUri, neo4j.NoAuth())
 	if err != nil {

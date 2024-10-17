@@ -35,17 +35,11 @@ func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCoun
 }
 
 func (generator *Generator) createGraphTx(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, edgeCount int) (int, error) {
-	_, err := tx.Run(ctx, "cypher query", map[string]interface{}{"count": nodeCount})
-	if err != nil {
-		return 0, err
-	}
-
-	_, err = tx.Run(ctx, `
-		cypher query
-	`, map[string]interface{}{"edgeCount": edgeCount})
-
-	if err != nil {
-		return 0, err
+	for i := 1; i <= nodeCount; i++ {
+		_, err := tx.Run(ctx, "CREATE (n:Node {ID: $id})", map[string]interface{}{"id": i})
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return nodeCount, nil

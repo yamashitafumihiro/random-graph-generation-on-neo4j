@@ -6,6 +6,7 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"log"
 	"random-graph-generation-on-neo4j/graph"
+	"random-graph-generation-on-neo4j/io"
 )
 
 func main() {
@@ -32,8 +33,7 @@ func main() {
 
 	generator := graph.NewGenerator(driver)
 
-	nodeCount := 5
-	edgeCount := 2
+	nodeCount, edgeCount := io.Input()
 
 	result, err := generator.CreateGraph(ctx, nodeCount, edgeCount)
 	if err != nil {

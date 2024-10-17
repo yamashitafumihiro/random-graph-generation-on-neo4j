@@ -67,7 +67,7 @@ func createNode(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount int)
 }
 
 func createEdge(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, edgeCount int) (int, error) {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	totalEdges := 0
 
 	for i := 1; i <= nodeCount; i++ {
@@ -76,7 +76,7 @@ func createEdge(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, edg
 		for j := 0; j < edgeCount; j++ {
 			var targetID int
 			for {
-				targetID = rand.Intn(nodeCount) + 1
+				targetID = r.Intn(nodeCount) + 1
 				if targetID != i && !isTargetUsed(usedTargets, targetID) {
 					break // 適切なターゲットが見つかった場合はループを抜ける
 				}

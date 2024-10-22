@@ -86,7 +86,8 @@ func selectEntity(entities map[string]float64) (string, error) {
 }
 
 func createNode(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, propertySize int, entities map[string]float64) ([]NodeInfo, error) {
-	nodes := make([]NodeInfo, nodeCount)
+	var nodes []NodeInfo
+	entityCounters := make(map[string]int)
 
 	for i := 1; i <= nodeCount; i++ {
 		entity, err := selectEntity(entities)
@@ -94,22 +95,32 @@ func createNode(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, pro
 			return nil, err
 		}
 
+		entityCounters[entity]++
+		entityID := entityCounters[entity]
+
 		properties := generateProperties(propertySize)
-		properties["ID"] = i
+		properties["ID"] = entityID
 
 		_, err = tx.Run(ctx, "CREATE (n:"+entity+") SET n += $props", map[string]interface{}{"props": properties})
 		if err != nil {
 			return nil, err
 		}
 
-		nodes[i-1] = NodeInfo{ID: i, Entity: entity}
+		nodes = append(nodes, NodeInfo{ID: entityID, Entity: entity})
 	}
 	return nodes, nil
+}
+
+func edgeExists(usedEdges map[string]struct{}, edgeKey string) bool {
+	_, exists := usedEdges[edgeKey]
+	return exists
 }
 
 func createEdge(ctx context.Context, tx neo4j.ManagedTransaction, nodes []NodeInfo, edgeCount int) (int, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	totalEdges := 0
+
+	usedEdges := make(map[string]struct{})
 
 	for _, node := range nodes {
 		usedTargets := make(map[int]struct{})
@@ -118,19 +129,23 @@ func createEdge(ctx context.Context, tx neo4j.ManagedTransaction, nodes []NodeIn
 			var target NodeInfo
 			for {
 				target = nodes[r.Intn(len(nodes))]
-				if target.ID != node.ID && !isTargetUsed(usedTargets, target.ID) {
-					break
+
+				edgeKey := fmt.Sprintf("%s-%d->%s-%d", node.Entity, node.ID, target.Entity, target.ID)
+				if target.ID == node.ID || isTargetUsed(usedTargets, target.ID) || edgeExists(usedEdges, edgeKey) {
+					continue
 				}
+				break
 			}
 
 			_, err := tx.Run(ctx, `
-                MATCH (a {ID: $source}), (b {ID: $target})
+                MATCH (a:`+node.Entity+` {ID: $source}), (b:`+target.Entity+` {ID: $target})
                 CREATE (a)-[:CONNECTED]->(b)
             `, map[string]interface{}{"source": node.ID, "target": target.ID})
 			if err != nil {
 				return totalEdges, err
 			}
 
+			usedEdges[fmt.Sprintf("%s-%d->%s-%d", node.Entity, node.ID, target.Entity, target.ID)] = struct{}{}
 			usedTargets[target.ID] = struct{}{}
 			totalEdges++
 		}

@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func Input() (int, int, int) {
+func Input() (int, int, int, map[string]float64) {
 	var nodeCount, edgeCount, propertySize int
 
 	fmt.Print("Enter the number of nodes (nodeCount): ")
@@ -26,5 +26,28 @@ func Input() (int, int, int) {
 		log.Fatal("Invalid input for propertySize:", err)
 	}
 
-	return nodeCount, edgeCount, propertySize
+	entities := make(map[string]float64)
+	var entityName string
+	var probability float64
+
+	for {
+		fmt.Print("Enter entity name (or 'done' to finish): ")
+		_, err = fmt.Scan(&entityName)
+		if err != nil {
+			log.Fatal("Invalid input for entity name:", err)
+		}
+		if entityName == "done" {
+			break
+		}
+
+		fmt.Printf("Enter probability for %s: ", entityName)
+		_, err = fmt.Scan(&probability)
+		if err != nil {
+			log.Fatal("Invalid input for probability:", err)
+		}
+
+		entities[entityName] = probability
+	}
+
+	return nodeCount, edgeCount, propertySize, entities
 }

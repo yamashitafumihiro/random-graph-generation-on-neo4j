@@ -5,8 +5,8 @@ import (
 	"log"
 )
 
-func Input() (int, int) {
-	var nodeCount, edgeCount int
+func Input() (int, int, int) {
+	var nodeCount, edgeCount, propertySize int
 
 	fmt.Print("Enter the number of nodes (nodeCount): ")
 	_, err := fmt.Scan(&nodeCount)
@@ -19,5 +19,12 @@ func Input() (int, int) {
 	if err != nil {
 		log.Fatal("Invalid input for edgeCount:", err)
 	}
-	return nodeCount, edgeCount
+
+	fmt.Print("Enter the size of properties (propertySize): ")
+	_, err = fmt.Scan(&propertySize)
+	if err != nil {
+		log.Fatal("Invalid input for propertySize:", err)
+	}
+
+	return nodeCount, edgeCount, propertySize
 }

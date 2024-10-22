@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"fmt"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"log"
 	"math/rand"
@@ -21,7 +22,7 @@ func NewGenerator(driver neo4j.DriverWithContext) *Generator {
 	return &Generator{driver: driver}
 }
 
-func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCount int) (Result, error) {
+func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCount, propertySize int) (Result, error) {
 	session := generator.driver.NewSession(ctx, neo4j.SessionConfig{})
 	defer func(session neo4j.SessionWithContext, ctx context.Context) {
 		err := session.Close(ctx)
@@ -31,7 +32,7 @@ func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCoun
 	}(session, ctx)
 
 	result, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
-		return generator.createGraphTx(ctx, tx, nodeCount, edgeCount)
+		return generator.createGraphTx(ctx, tx, nodeCount, edgeCount, propertySize)
 	})
 
 	if err != nil {
@@ -41,8 +42,8 @@ func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCoun
 	return result.(Result), nil
 }
 
-func (generator *Generator) createGraphTx(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, edgeCount int) (Result, error) {
-	nodesCreated, err := createNode(ctx, tx, nodeCount)
+func (generator *Generator) createGraphTx(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, edgeCount, propertySize int) (Result, error) {
+	nodesCreated, err := createNode(ctx, tx, nodeCount, propertySize)
 	if err != nil {
 		return Result{}, err
 	}
@@ -56,9 +57,22 @@ func (generator *Generator) createGraphTx(ctx context.Context, tx neo4j.ManagedT
 
 }
 
-func createNode(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount int) (int, error) {
+func generateProperties(size int) map[string]interface{} {
+	properties := make(map[string]interface{})
+	for i := 1; i <= size; i++ {
+		key := fmt.Sprintf("key%d", i)
+		value := fmt.Sprintf("value%d", i)
+		properties[key] = value
+	}
+	return properties
+}
+
+func createNode(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, propertySize int) (int, error) {
 	for i := 1; i <= nodeCount; i++ {
-		_, err := tx.Run(ctx, "CREATE (n:Node {ID: $id})", map[string]interface{}{"id": i})
+		properties := generateProperties(propertySize)
+		properties["ID"] = i
+
+		_, err := tx.Run(ctx, "CREATE (n:Node $props)", map[string]interface{}{"props": properties})
 		if err != nil {
 			return 0, err
 		}

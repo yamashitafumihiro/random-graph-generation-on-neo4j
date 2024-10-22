@@ -18,6 +18,11 @@ type Result struct {
 	EdgesCreated int
 }
 
+type NodeInfo struct {
+	ID     int
+	Entity string
+}
+
 func NewGenerator(driver neo4j.DriverWithContext) *Generator {
 	return &Generator{driver: driver}
 }
@@ -43,18 +48,17 @@ func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCoun
 }
 
 func (generator *Generator) createGraphTx(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, edgeCount, propertySize int, entities map[string]float64) (Result, error) {
-	nodesCreated, err := createNode(ctx, tx, nodeCount, propertySize, entities)
+	nodes, err := createNode(ctx, tx, nodeCount, propertySize, entities)
 	if err != nil {
 		return Result{}, err
 	}
 
-	edgesCreated, err := createEdge(ctx, tx, nodeCount, edgeCount)
+	edgesCreated, err := createEdge(ctx, tx, nodes, edgeCount)
 	if err != nil {
 		return Result{}, err
 	}
 
-	return Result{NodesCreated: nodesCreated, EdgesCreated: edgesCreated}, nil
-
+	return Result{NodesCreated: nodeCount, EdgesCreated: edgesCreated}, nil
 }
 
 func generateProperties(size int) map[string]interface{} {
@@ -67,57 +71,67 @@ func generateProperties(size int) map[string]interface{} {
 	return properties
 }
 
-func selectEntity(entities map[string]float64) string {
+func selectEntity(entities map[string]float64) (string, error) {
 	r := rand.Float64() * 100
 	sum := 0.0
+
 	for entity, probability := range entities {
 		sum += probability
 		if r <= sum {
-			return entity
+			return entity, nil
 		}
 	}
-	return ""
+
+	return "", fmt.Errorf("failed to select an entity: probabilities may not sum to 100")
 }
 
-func createNode(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, propertySize int, entities map[string]float64) (int, error) {
+func createNode(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, propertySize int, entities map[string]float64) ([]NodeInfo, error) {
+	nodes := make([]NodeInfo, nodeCount)
+
 	for i := 1; i <= nodeCount; i++ {
-		entity := selectEntity(entities)
+		entity, err := selectEntity(entities)
+		if err != nil {
+			return nil, err
+		}
+
 		properties := generateProperties(propertySize)
 		properties["ID"] = i
 
-		_, err := tx.Run(ctx, fmt.Sprintf("CREATE (n:%s $props)", entity), map[string]interface{}{"props": properties})
+		_, err = tx.Run(ctx, "CREATE (n:"+entity+") SET n += $props", map[string]interface{}{"props": properties})
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
+
+		nodes[i-1] = NodeInfo{ID: i, Entity: entity}
 	}
-	return nodeCount, nil
+	return nodes, nil
 }
 
-func createEdge(ctx context.Context, tx neo4j.ManagedTransaction, nodeCount, edgeCount int) (int, error) {
+func createEdge(ctx context.Context, tx neo4j.ManagedTransaction, nodes []NodeInfo, edgeCount int) (int, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	totalEdges := 0
 
-	for i := 1; i <= nodeCount; i++ {
+	for _, node := range nodes {
 		usedTargets := make(map[int]struct{})
 
 		for j := 0; j < edgeCount; j++ {
-			var targetID int
+			var target NodeInfo
 			for {
-				targetID = r.Intn(nodeCount) + 1
-				if targetID != i && !isTargetUsed(usedTargets, targetID) {
-					break // 適切なターゲットが見つかった場合はループを抜ける
+				target = nodes[r.Intn(len(nodes))]
+				if target.ID != node.ID && !isTargetUsed(usedTargets, target.ID) {
+					break
 				}
 			}
 
 			_, err := tx.Run(ctx, `
-				MATCH (a:Node {ID: $source}), (b:Node {ID: $target})
-				CREATE (a)-[:CONNECTED]->(b)
-			`, map[string]interface{}{"source": i, "target": targetID})
+                MATCH (a {ID: $source}), (b {ID: $target})
+                CREATE (a)-[:CONNECTED]->(b)
+            `, map[string]interface{}{"source": node.ID, "target": target.ID})
 			if err != nil {
 				return totalEdges, err
 			}
 
-			usedTargets[targetID] = struct{}{}
+			usedTargets[target.ID] = struct{}{}
 			totalEdges++
 		}
 	}

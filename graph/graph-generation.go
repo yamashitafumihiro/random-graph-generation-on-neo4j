@@ -63,11 +63,22 @@ func (generator *Generator) createGraphTx(ctx context.Context, tx neo4j.ManagedT
 
 func generateProperties(size int) map[string]interface{} {
 	properties := make(map[string]interface{})
+
+	values := make([]int, size)
+	for i := 0; i < size; i++ {
+		values[i] = i + 1
+	}
+
+	rand.Shuffle(len(values), func(i, j int) {
+		values[i], values[j] = values[j], values[i]
+	})
+
 	for i := 1; i <= size; i++ {
 		key := fmt.Sprintf("key%d", i)
-		value := fmt.Sprintf("value%d", i)
+		value := fmt.Sprintf("value%d", values[i-1])
 		properties[key] = value
 	}
+
 	return properties
 }
 

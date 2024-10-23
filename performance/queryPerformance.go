@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func MeasureQueryPerformance(ctx context.Context, driver neo4j.DriverWithContext, query string, runs int) (float64, error) {
+func MeasureQueryPerformance(ctx context.Context, driver neo4j.DriverWithContext, query string, params map[string]interface{}, runs int) (float64, error) {
 	var totalDuration time.Duration
 
 	for i := 0; i < runs; i++ {
@@ -26,7 +26,7 @@ func MeasureQueryPerformance(ctx context.Context, driver neo4j.DriverWithContext
 
 		start := time.Now()
 
-		_, err = session.Run(ctx, query, map[string]interface{}{"value": "value1"})
+		_, err = session.Run(ctx, query, params)
 		if err != nil {
 			return 0, err
 		}

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 func Interface(ctx context.Context, driver neo4j.DriverWithContext) {
@@ -37,7 +38,10 @@ func executeAndPrintQuery(ctx context.Context, driver neo4j.DriverWithContext, q
 		}
 	}()
 
+	startTime := time.Now()
 	result, err := session.Run(ctx, query, nil)
+	elapsedTime := time.Since(startTime)
+
 	if err != nil {
 		return err
 	}
@@ -45,10 +49,11 @@ func executeAndPrintQuery(ctx context.Context, driver neo4j.DriverWithContext, q
 	for result.Next(ctx) {
 		record := result.Record()
 		for _, value := range record.Values {
-			fmt.Printf("%v ", value) // レコード内の各値を出力
+			fmt.Printf("%v ", value)
 		}
 		fmt.Println()
 	}
+	fmt.Printf("Query executed in %v\n", elapsedTime)
 
 	if err = result.Err(); err != nil {
 		return err

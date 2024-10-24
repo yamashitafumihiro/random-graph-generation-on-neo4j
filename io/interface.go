@@ -23,26 +23,35 @@ func Interface(ctx context.Context, driver neo4j.DriverWithContext) {
 		if strings.TrimSpace(query) == "exit" {
 			break
 		}
-		result, err := executeQuery(ctx, driver, query)
-		if err != nil {
-			log.Fatal()
+		if err := executeAndPrintQuery(ctx, driver, query); err != nil {
+			log.Printf("Error executing query: %v\n", err)
 		}
-		fmt.Println(result)
 	}
 }
 
-func executeQuery(ctx context.Context, driver neo4j.DriverWithContext, query string) (neo4j.ResultWithContext, error) {
+func executeAndPrintQuery(ctx context.Context, driver neo4j.DriverWithContext, query string) error {
 	session := driver.NewSession(ctx, neo4j.SessionConfig{})
-	defer func(session neo4j.SessionWithContext, ctx context.Context) {
-		err := session.Close(ctx)
-		if err != nil {
+	defer func() {
+		if err := session.Close(ctx); err != nil {
 			log.Fatal(err)
 		}
-	}(session, ctx)
+	}()
 
 	result, err := session.Run(ctx, query, nil)
 	if err != nil {
-		return result, err
+		return err
 	}
-	return result, nil
+
+	for result.Next(ctx) {
+		record := result.Record()
+		for _, value := range record.Values {
+			fmt.Printf("%v ", value) // レコード内の各値を出力
+		}
+		fmt.Println()
+	}
+
+	if err = result.Err(); err != nil {
+		return err
+	}
+	return nil
 }

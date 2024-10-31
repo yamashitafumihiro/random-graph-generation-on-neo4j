@@ -33,9 +33,9 @@ func main() {
 
 	generator := graph.NewGenerator(driver)
 
-	nodeCount, edgeCount, propertySize, entities := io.Input()
+	nodeCount, edgeCount, propertySize, entities, batchSize := io.Input()
 
-	result, err := generator.CreateGraph(ctx, nodeCount, edgeCount, propertySize, entities)
+	result, err := generator.CreateGraph(ctx, nodeCount, edgeCount, propertySize, batchSize, entities)
 	if err != nil {
 		log.Fatal(err)
 	}

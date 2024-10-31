@@ -5,8 +5,8 @@ import (
 	"log"
 )
 
-func Input() (int, int, int, map[string]float64) {
-	var nodeCount, edgeCount, propertySize int
+func Input() (int, int, int, map[string]float64, int) {
+	var nodeCount, edgeCount, propertySize, batchSize int
 
 	fmt.Print("Enter the number of nodes (nodeCount): ")
 	_, err := fmt.Scan(&nodeCount)
@@ -24,6 +24,12 @@ func Input() (int, int, int, map[string]float64) {
 	_, err = fmt.Scan(&propertySize)
 	if err != nil {
 		log.Fatal("Invalid input for propertySize:", err)
+	}
+
+	fmt.Print("Enter the batch size (batchSize): ")
+	_, err = fmt.Scan(&batchSize)
+	if err != nil {
+		log.Fatal("Invalid input for batchSize:", err)
 	}
 
 	entities := make(map[string]float64)
@@ -49,5 +55,5 @@ func Input() (int, int, int, map[string]float64) {
 		entities[entityName] = probability
 	}
 
-	return nodeCount, edgeCount, propertySize, entities
+	return nodeCount, edgeCount, propertySize, entities, batchSize
 }

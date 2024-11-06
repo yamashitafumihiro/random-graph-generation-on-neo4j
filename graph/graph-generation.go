@@ -25,6 +25,11 @@ type NodeInfo struct {
 	Entity string
 }
 
+type EdgeInfo struct {
+	ID     int
+	Entity string
+}
+
 func NewGenerator(driver neo4j.DriverWithContext) *Generator {
 	return &Generator{
 		driver:         driver,
@@ -32,7 +37,7 @@ func NewGenerator(driver neo4j.DriverWithContext) *Generator {
 	}
 }
 
-func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCount, propertySize, batchSize int, entities map[string]float64) (Result, error) {
+func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCount, nodePropertySize, edgePropertySize, batchSize int, entities map[string]float64) (Result, error) {
 	var totalNodesCreated int
 	var totalEdgesCreated int
 	var allNodes []NodeInfo
@@ -43,7 +48,7 @@ func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCoun
 			currentBatchSize = nodeCount - i
 		}
 
-		nodes, err := generator.createNodesBatch(ctx, currentBatchSize, propertySize, entities)
+		nodes, err := generator.createNodesBatch(ctx, currentBatchSize, nodePropertySize, entities)
 		if err != nil {
 			return Result{}, err
 		}
@@ -58,7 +63,7 @@ func (generator *Generator) CreateGraph(ctx context.Context, nodeCount, edgeCoun
 		}
 		nodesBatch := allNodes[i:end]
 
-		edgesCreated, err := generator.createEdgesBatch(ctx, nodesBatch, allNodes, edgeCount)
+		edgesCreated, err := generator.createEdgesBatch(ctx, nodesBatch, allNodes, edgeCount, edgePropertySize)
 		if err != nil {
 			return Result{}, err
 		}
@@ -77,7 +82,7 @@ func (generator *Generator) createNodesBatch(ctx context.Context, batchSize, pro
 		}
 	}(session, ctx)
 
-	nodes := []NodeInfo{}
+	var nodes []NodeInfo
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
 		for i := 0; i < batchSize; i++ {
@@ -109,7 +114,7 @@ func (generator *Generator) createNodesBatch(ctx context.Context, batchSize, pro
 	return nodes, nil
 }
 
-func (generator *Generator) createEdgesBatch(ctx context.Context, nodesBatch []NodeInfo, allNodes []NodeInfo, edgeCount int) (int, error) {
+func (generator *Generator) createEdgesBatch(ctx context.Context, nodesBatch []NodeInfo, allNodes []NodeInfo, edgeCount, propertySize int) (int, error) {
 	session := generator.driver.NewSession(ctx, neo4j.SessionConfig{})
 	defer func(session neo4j.SessionWithContext, ctx context.Context) {
 		err := session.Close(ctx)
@@ -140,10 +145,12 @@ func (generator *Generator) createEdgesBatch(ctx context.Context, nodesBatch []N
 					break
 				}
 
+				properties := generateProperties(propertySize)
+
 				_, err := tx.Run(ctx, `
                     MATCH (a:`+node.Entity+` {ID: $source}), (b:`+target.Entity+` {ID: $target})
-                    CREATE (a)-[:CONNECTED]->(b)
-                `, map[string]interface{}{"source": node.ID, "target": target.ID})
+                    CREATE (a)-[r:CONNECTED]->(b) SET r += $props
+                `, map[string]interface{}{"source": node.ID, "target": target.ID, "props": properties})
 				if err != nil {
 					return nil, err
 				}

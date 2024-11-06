@@ -5,8 +5,8 @@ import (
 	"log"
 )
 
-func Input() (int, int, int, map[string]float64, int) {
-	var nodeCount, edgeCount, propertySize, batchSize int
+func Input() (int, int, int, int, map[string]float64, int) {
+	var nodeCount, edgeCount, nodePropertySize, edgePropertySize, batchSize int
 
 	fmt.Print("Enter the number of nodes (nodeCount): ")
 	_, err := fmt.Scan(&nodeCount)
@@ -20,8 +20,14 @@ func Input() (int, int, int, map[string]float64, int) {
 		log.Fatal("Invalid input for edgeCount:", err)
 	}
 
-	fmt.Print("Enter the size of properties (propertySize): ")
-	_, err = fmt.Scan(&propertySize)
+	fmt.Print("Enter the size of node properties (propertySize): ")
+	_, err = fmt.Scan(&nodePropertySize)
+	if err != nil {
+		log.Fatal("Invalid input for propertySize:", err)
+	}
+
+	fmt.Print("Enter the size of edge properties (propertySize): ")
+	_, err = fmt.Scan(&edgePropertySize)
 	if err != nil {
 		log.Fatal("Invalid input for propertySize:", err)
 	}
@@ -55,5 +61,5 @@ func Input() (int, int, int, map[string]float64, int) {
 		entities[entityName] = probability
 	}
 
-	return nodeCount, edgeCount, propertySize, entities, batchSize
+	return nodeCount, edgeCount, nodePropertySize, edgePropertySize, entities, batchSize
 }

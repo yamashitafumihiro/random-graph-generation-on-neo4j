@@ -25,11 +25,6 @@ type NodeInfo struct {
 	Entity string
 }
 
-type EdgeInfo struct {
-	ID     int
-	Entity string
-}
-
 func NewGenerator(driver neo4j.DriverWithContext) *Generator {
 	return &Generator{
 		driver:         driver,
